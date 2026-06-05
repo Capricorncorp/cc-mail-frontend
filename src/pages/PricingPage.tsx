@@ -76,7 +76,7 @@ export default function PricingPage() {
         {plans.map(plan => (
           <div key={plan.id} style={{
             background: 'white',
-            border: `2px solid ${plan.popular ? branding?.colors?.primary || '#1e3a8a' : '#e0e0e0'}`,
+            border: `2px solid ${plan.popular ? branding?.primary_color || '#1e3a8a' : '#e0e0e0'}`,
             borderRadius: 12,
             padding: 32,
             position: 'relative',
@@ -84,7 +84,7 @@ export default function PricingPage() {
             {plan.popular && (
               <div style={{
                 position: 'absolute', top: -12, right: 24,
-                background: branding?.colors?.primary || '#1e3a8a', color: 'white',
+                background: branding?.primary_color || '#1e3a8a', color: 'white',
                 padding: '4px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600,
               }}>POPULAR</div>
             )}
@@ -107,9 +107,9 @@ export default function PricingPage() {
               onClick={() => onSelect(plan.id)}
               style={{
                 width: '100%', padding: '12px',
-                background: plan.popular ? branding?.colors?.primary || '#1e3a8a' : 'white',
-                color: plan.popular ? 'white' : branding?.colors?.primary || '#1e3a8a',
-                border: `2px solid ${branding?.colors?.primary || '#1e3a8a'}`,
+                background: plan.popular ? branding?.primary_color || '#1e3a8a' : 'white',
+                color: plan.popular ? 'white' : branding?.primary_color || '#1e3a8a',
+                border: `2px solid ${branding?.primary_color || '#1e3a8a'}`,
                 borderRadius: 6, fontWeight: 600,
               }}
             >
