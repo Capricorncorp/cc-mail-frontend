@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 export default function SignupRedirect() {
   useEffect(() => {
     const clientId = 'mail-frontend'
-    const redirectUri = encodeURIComponent('https://mail.capricorncorp.com/onboarding')
+    const redirectUri = encodeURIComponent('https://business-email.capricorncorp.com/onboarding')
     const state = encodeURIComponent(crypto.randomUUID())
     sessionStorage.setItem('oauth_state', state)
     window.location.href =

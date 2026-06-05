@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Mail acquisition surface (mail.capricorncorp.com) \u00e2\u20ac\u201d Architecture C Phase 4b",
+  "description": "Mail acquisition surface (business-email.capricorncorp.com) \u2014 Architecture C Phase 4b",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

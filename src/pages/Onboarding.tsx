@@ -480,9 +480,11 @@ function MailQuickStart({
 }) {
   // Wave 54: deep-link via ?tab= so each Quick Start card lands the
   // customer exactly where they need to go.
-  // Phase 4b §22.34 — customer leaves mail.capricorncorp.com after
-  // provisioning succeeds and goes to Console for ongoing mailbox
-  // management.
+  // Phase 4b §22.34 — customer leaves business-email.capricorncorp.com
+  // after provisioning succeeds and goes to Console for ongoing
+  // mailbox management.
+  // Wave 90 §22.39: renamed from mail.capricorncorp.com to avoid colliding
+  // with the production CWP mail server at mail.capricorncorp.com (.201).
   const goTab = (search: string) => {
     const consoleUrl = new URL('https://console.capricorncorp.com/');
     consoleUrl.search = search;
