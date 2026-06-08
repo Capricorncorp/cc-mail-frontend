@@ -29,6 +29,14 @@ function featureList(features: any): string[] {
   return []
 }
 
+// Registry sends `monthly` in PAISE (e.g. 14900 = ₹149) + perUser:true. Older code
+// read a non-existent `pricePerUser` field → ₹NaN. Convert paise → rupees.
+function perUserRupees(plan: any): number {
+  if (typeof plan.monthly === 'number') return Math.round(plan.monthly / 100)
+  if (typeof plan.pricePerUser === 'number') return plan.pricePerUser
+  return 0
+}
+
 export default function PricingPage() {
   const navigate = useNavigate()
   const { branding } = useTheme()
@@ -107,10 +115,10 @@ export default function PricingPage() {
             )}
             <h3 style={{ fontSize: 24, marginBottom: 8 }}>{plan.name}</h3>
             <div style={{ fontSize: 36, fontWeight: 700, marginBottom: 4 }}>
-              ₹{plan.pricePerUser}<span style={{ fontSize: 16, color: '#666', fontWeight: 400 }}>/user/mo</span>
+              ₹{perUserRupees(plan)}<span style={{ fontSize: 16, color: '#666', fontWeight: 400 }}>/user/mo</span>
             </div>
             <div style={{ fontSize: 14, color: '#666', marginBottom: 24 }}>
-              ₹{plan.pricePerUser * userCount}/month for {userCount} mailboxes
+              ₹{perUserRupees(plan) * userCount}/month for {userCount} mailboxes
             </div>
             <ul style={{ listStyle: 'none', marginBottom: 24 }}>
               {featureList(plan.features).map((f, i) => (
