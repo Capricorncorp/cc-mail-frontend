@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Check, ArrowLeft } from 'lucide-react'
 import client from '@capricorncorp/frontend-platform/api/client'
 import { useTheme } from '@capricorncorp/frontend-platform/theme/ThemeProvider'
+import CapricornLogo from '../components/CapricornLogo'
 
 interface Plan {
   id: string
@@ -12,10 +13,7 @@ interface Plan {
   popular?: boolean
 }
 
-// The registry returns `features` as an OBJECT (e.g. {storagePerUserGb:10, webmail:true,
-// antiSpam:true}), but this page typed it as string[] and .map()'d it directly — crashing
-// the whole page (blank screen) once plans actually load. Normalize object|array →
-// readable string[] so the plan cards render for either shape.
+// Registry returns `features` as an OBJECT and `monthly` in PAISE + perUser:true. Normalize.
 function featureList(features: any): string[] {
   if (Array.isArray(features)) return features.map(String)
   if (features && typeof features === 'object') {
@@ -28,18 +26,21 @@ function featureList(features: any): string[] {
   }
   return []
 }
-
-// Registry sends `monthly` in PAISE (e.g. 14900 = ₹149) + perUser:true. Older code
-// read a non-existent `pricePerUser` field → ₹NaN. Convert paise → rupees.
 function perUserRupees(plan: any): number {
   if (typeof plan.monthly === 'number') return Math.round(plan.monthly / 100)
   if (typeof plan.pricePerUser === 'number') return plan.pricePerUser
   return 0
 }
 
+const HERO = '#0A1628'
+const INK = '#0f172a'
+const BODY = '#475569'
+
 export default function PricingPage() {
   const navigate = useNavigate()
   const { branding } = useTheme()
+  const primary = branding?.primary_color || '#2563eb'
+  const name = branding?.name || 'Capricorncorp'
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [userCount, setUserCount] = useState(5)
@@ -60,88 +61,99 @@ export default function PricingPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
-      <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#666', marginBottom: 32 }}>
-        <ArrowLeft size={16} /> Back
-      </Link>
-
-      <h1 style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>Mail plans</h1>
-      <p style={{ textAlign: 'center', color: '#666', marginBottom: 32 }}>
-        Per-user pricing. Add or remove users any time.
-      </p>
-
-      {/* User-count slider */}
-      <div style={{ maxWidth: 480, margin: '0 auto 48px', padding: 24, background: 'white', borderRadius: 12 }}>
-        <div style={{ marginBottom: 12 }}>
-          <strong style={{ fontSize: 16 }}>{userCount}</strong> mailbox{userCount === 1 ? '' : 'es'}
+    <div style={{ minHeight: '100vh', background: '#fff', color: INK }}>
+      {/* ── Header (dark, branded) ───────────────────────────── */}
+      <header style={{ background: HERO, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {branding?.logo_url
+              ? <img src={branding.logo_url} alt={name} style={{ height: 30 }} />
+              : <CapricornLogo iconSize={30} />}
+            <span style={{ color: '#94a3b8', fontWeight: 600, fontSize: 14, borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 12 }}>Business Email</span>
+          </Link>
+          <nav style={{ display: 'flex', gap: 26, alignItems: 'center' }}>
+            <a href="https://console.capricorncorp.com" style={{ color: '#cbd5e1', fontWeight: 500, fontSize: 15 }}>Sign in</a>
+            <Link to="/signup" style={{ background: primary, color: '#fff', padding: '9px 18px', borderRadius: 8, fontWeight: 600, fontSize: 15 }}>Get started</Link>
+          </nav>
         </div>
-        <input
-          type="range"
-          min="1"
-          max="50"
-          value={userCount}
-          onChange={(e) => setUserCount(Number(e.target.value))}
-          style={{ width: '100%' }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginTop: 4 }}>
-          <span>1</span>
-          <span>50+ (contact sales)</span>
-        </div>
-      </div>
+      </header>
 
-      {loading && <p style={{ textAlign: 'center' }}>Loading plans from the registry...</p>}
+      <div style={{ maxWidth: 1140, margin: '0 auto', padding: '48px 24px 72px' }}>
+        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: BODY, marginBottom: 28, fontWeight: 500 }}>
+          <ArrowLeft size={16} /> Back
+        </Link>
 
-      {!loading && plans.length === 0 && (
-        <div style={{ padding: 40, textAlign: 'center', background: '#fef3c7', borderRadius: 12 }}>
-          <p>Plans aren't loaded yet. <Link to="/signup" style={{ textDecoration: 'underline' }}>Get in touch</Link> for a custom plan.</p>
-        </div>
-      )}
+        <h1 style={{ fontSize: 'clamp(34px, 5vw, 48px)', textAlign: 'center', fontWeight: 800, marginBottom: 14, color: INK, letterSpacing: '-0.02em' }}>Mail plans</h1>
+        <p style={{ textAlign: 'center', color: BODY, marginBottom: 32, fontSize: 17 }}>
+          Per-user pricing. Add or remove users any time.
+        </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
-        {plans.map(plan => (
-          <div key={plan.id} style={{
-            background: 'white',
-            border: `2px solid ${plan.popular ? branding?.primary_color || '#1e3a8a' : '#e0e0e0'}`,
-            borderRadius: 12,
-            padding: 32,
-            position: 'relative',
-          }}>
-            {plan.popular && (
-              <div style={{
-                position: 'absolute', top: -12, right: 24,
-                background: branding?.primary_color || '#1e3a8a', color: 'white',
-                padding: '4px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-              }}>POPULAR</div>
-            )}
-            <h3 style={{ fontSize: 24, marginBottom: 8 }}>{plan.name}</h3>
-            <div style={{ fontSize: 36, fontWeight: 700, marginBottom: 4 }}>
-              ₹{perUserRupees(plan)}<span style={{ fontSize: 16, color: '#666', fontWeight: 400 }}>/user/mo</span>
-            </div>
-            <div style={{ fontSize: 14, color: '#666', marginBottom: 24 }}>
-              ₹{perUserRupees(plan) * userCount}/month for {userCount} mailboxes
-            </div>
-            <ul style={{ listStyle: 'none', marginBottom: 24 }}>
-              {featureList(plan.features).map((f, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-                  <Check size={16} color="#22c55e" style={{ marginTop: 4 }} />
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              onClick={() => onSelect(plan.id)}
-              style={{
-                width: '100%', padding: '12px',
-                background: plan.popular ? branding?.primary_color || '#1e3a8a' : 'white',
-                color: plan.popular ? 'white' : branding?.primary_color || '#1e3a8a',
-                border: `2px solid ${branding?.primary_color || '#1e3a8a'}`,
-                borderRadius: 6, fontWeight: 600,
-              }}
-            >
-              Get started
-            </button>
+        {/* Mailbox-count slider */}
+        <div className="brand-card" style={{ maxWidth: 480, margin: '0 auto 48px' }}>
+          <div style={{ marginBottom: 12, color: INK }}>
+            <strong style={{ fontSize: 16 }}>{userCount}</strong> mailbox{userCount === 1 ? '' : 'es'}
           </div>
-        ))}
+          <input
+            type="range"
+            min="1"
+            max="50"
+            value={userCount}
+            onChange={(e) => setUserCount(Number(e.target.value))}
+            style={{ width: '100%', accentColor: primary }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: BODY, marginTop: 4 }}>
+            <span>1</span>
+            <span>50+ (contact sales)</span>
+          </div>
+        </div>
+
+        {loading && <p style={{ textAlign: 'center', color: BODY }}>Loading plans from the registry…</p>}
+
+        {!loading && plans.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 14, color: '#854d0e' }}>
+            <p>Plans aren't loaded yet. <Link to="/signup" style={{ textDecoration: 'underline', fontWeight: 600 }}>Get in touch</Link> for a custom plan.</p>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+          {plans.map(plan => (
+            <div key={plan.id} className="brand-card" style={{
+              position: 'relative',
+              border: `2px solid ${plan.popular ? primary : '#e6e9f0'}`,
+            }}>
+              {plan.popular && (
+                <div style={{ position: 'absolute', top: -12, right: 24, background: primary, color: 'white', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, letterSpacing: '0.04em' }}>POPULAR</div>
+              )}
+              <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: INK }}>{plan.name}</h3>
+              <div style={{ fontSize: 38, fontWeight: 800, marginBottom: 4, color: INK, letterSpacing: '-0.02em' }}>
+                ₹{perUserRupees(plan)}<span style={{ fontSize: 16, color: BODY, fontWeight: 400 }}>/user/mo</span>
+              </div>
+              <div style={{ fontSize: 14, color: BODY, marginBottom: 20 }}>
+                ₹{perUserRupees(plan) * userCount}/month for {userCount} mailboxes
+              </div>
+              <ul style={{ listStyle: 'none', margin: '20px 0 24px' }}>
+                {featureList(plan.features).map((f, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, color: BODY, fontSize: 15 }}>
+                    <Check size={16} color="#16a34a" style={{ marginTop: 4, flexShrink: 0 }} />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => onSelect(plan.id)}
+                style={{
+                  width: '100%', padding: '12px',
+                  background: plan.popular ? primary : 'white',
+                  color: plan.popular ? 'white' : primary,
+                  border: `2px solid ${primary}`,
+                  borderRadius: 10, fontWeight: 600, fontSize: 15,
+                }}
+              >
+                Get started
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
