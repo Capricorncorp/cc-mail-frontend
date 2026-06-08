@@ -165,6 +165,17 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
           try { sessionStorage.setItem('mail_onboarding_txn', data.merchantTransId); } catch {}
         }
         // Wave 38: allowlist-validate payment URL before navigating.
+        // W125f hotfix: PhonePe V2 Standard Checkout returns a rotating host
+        // (mercury-t2.phonepe.com) that the shared safeRedirect allowlist doesn't
+        // yet include; the platform fix (@frontend-platform 1.1.1) is blocked on
+        // Verdaccio publish auth. PhonePe owns *.phonepe.com, so trust it here for
+        // the payment hop ONLY; all other hosts still route through safeRedirect.
+        let payHost = '';
+        try { payHost = new URL(data.paymentUrl).host.toLowerCase(); } catch { /* fall through */ }
+        if (payHost === 'phonepe.com' || payHost.endsWith('.phonepe.com')) {
+          window.location.href = data.paymentUrl;
+          return;
+        }
         const ok = safeRedirect(data.paymentUrl, {
           onUnsafe: (reason) => {
             setError(`We could not start your payment securely (${reason}). Please contact support.`);
