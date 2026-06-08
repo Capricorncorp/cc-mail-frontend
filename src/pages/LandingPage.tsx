@@ -12,6 +12,27 @@ interface Plan {
   popular?: boolean
 }
 
+// Registry returns `features` as an OBJECT and `monthly` price in PAISE. This page
+// assumed features:string[] (.slice/.map) and pricePerUser — both wrong, crashing
+// the page to a blank screen once plans load. Normalize both.
+function featureList(features: any): string[] {
+  if (Array.isArray(features)) return features.map(String)
+  if (features && typeof features === 'object') {
+    return Object.entries(features)
+      .filter(([, v]) => v !== false && v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => {
+        const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim()
+        return v === true ? label : `${label}: ${v}`
+      })
+  }
+  return []
+}
+function perUserRupees(plan: any): number {
+  if (typeof plan.monthly === 'number') return Math.round(plan.monthly / 100)
+  if (typeof plan.pricePerUser === 'number') return plan.pricePerUser
+  return 0
+}
+
 export default function LandingPage() {
   const navigate = useNavigate()
   const { branding } = useTheme()
@@ -126,10 +147,10 @@ export default function LandingPage() {
               )}
               <h3 style={{ fontSize: 24, marginBottom: 8 }}>{plan.name}</h3>
               <div style={{ fontSize: 36, fontWeight: 700, marginBottom: 24 }}>
-                ₹{plan.pricePerUser}<span style={{ fontSize: 16, color: '#666', fontWeight: 400 }}>/user/mo</span>
+                ₹{perUserRupees(plan)}<span style={{ fontSize: 16, color: '#666', fontWeight: 400 }}>/user/mo</span>
               </div>
               <ul style={{ listStyle: 'none', marginBottom: 24 }}>
-                {plan.features?.slice(0, 5).map((f, i) => (
+                {featureList(plan.features).slice(0, 5).map((f, i) => (
                   <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <Check size={16} color="#22c55e" /> <span>{f}</span>
                   </li>
