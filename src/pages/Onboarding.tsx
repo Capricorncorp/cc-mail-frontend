@@ -56,6 +56,10 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 const POLL_INTERVAL_MS = 3000;
+// W129: how many consecutive "no provisioning job" (404) polls to tolerate at
+// step 4 before concluding the order was never paid. Covers the brief
+// webhook→job-creation gap on a fresh payment (~18s) without spinning forever.
+const NO_JOB_GRACE_POLLS = 6;
 
 function featureList(f: Record<string, any>): string[] {
   if (Array.isArray(f)) return f;
@@ -94,6 +98,12 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
   const [merchantTransId, setMerchantTransId] = useState<string | null>(null);
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const pollTimer = useRef<number | null>(null);
+  // W129: distinguish "waiting for the provisioning job to appear" from "there
+  // is no paid order behind this txn" so step 4 shows an honest state, not a
+  // perpetual fake spinner.
+  const [provisioningPhase, setProvisioningPhase] = useState<'waiting' | 'no_payment'>('waiting');
+  const noJobPolls = useRef(0);
+  const [resumeChecked, setResumeChecked] = useState(false);
 
   useEffect(() => {
     client.get('/registry/products/mail/plans')
@@ -108,16 +118,32 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
   useEffect(() => {
     if (step !== 4 || !merchantTransId) return;
     let cancelled = false;
+    noJobPolls.current = 0;
+    setProvisioningPhase('waiting');
     const poll = async () => {
       if (cancelled) return;
       try {
         const { data } = await client.get(`/onboarding/${merchantTransId}/status`);
         if (cancelled) return;
         if (data?.job) {
+          noJobPolls.current = 0;
           setStatus(data.job);
           if (data.job.state === 'succeeded' || data.job.state === 'failed') return;
         }
-      } catch { /* keep polling */ }
+      } catch (e: any) {
+        // W129: a 404 means there is no provisioning job for this txn — i.e. no
+        // completed payment yet. Tolerate a short grace window (the webhook→job
+        // gap on a fresh payment), then surface an honest "no payment" state
+        // rather than spinning "Connecting…" forever (which is what a stale,
+        // unpaid txn resumed on a bare sign-in used to do).
+        if (e?.response?.status === 404) {
+          noJobPolls.current += 1;
+          if (noJobPolls.current >= NO_JOB_GRACE_POLLS) {
+            if (!cancelled) setProvisioningPhase('no_payment');
+            return; // stop polling — nothing to provision
+          }
+        }
+      }
       pollTimer.current = window.setTimeout(poll, POLL_INTERVAL_MS);
     };
     poll();
@@ -127,20 +153,46 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
     };
   }, [step, merchantTransId]);
 
-  // Resume after PhonePe redirect
+  // Resume after payment redirect — W129 hardening.
+  // A bare "Sign in" used to land here carrying a STALE `mail_onboarding_txn`
+  // from a prior abandoned attempt (Callback propagated it), and we jumped
+  // straight to step 4 → "Connecting to provisioning…" forever. Now:
+  //   • an explicit ?txn= (the real payment-gateway redirect) resumes step 4,
+  //     where the poll's grace guard handles the brief webhook→job gap;
+  //   • a sessionStorage-only txn is VALIDATED first — resumed only if it has a
+  //     real provisioning job; otherwise cleared, so sign-in lands on a clean,
+  //     usable step 1 instead of a dead spinner.
   useEffect(() => {
-    if (step === 1 && !merchantTransId) {
+    if (step !== 1 || merchantTransId || resumeChecked) return;
+    let cancelled = false;
+    (async () => {
+      let urlTxn: string | null = null;
+      let ssTxn: string | null = null;
       try {
-        const txn = sessionStorage.getItem('mail_onboarding_txn');
-        const urlTxn = new URLSearchParams(window.location.search).get('txn');
-        const resumeTxn = urlTxn || txn;
-        if (resumeTxn) {
-          setMerchantTransId(resumeTxn);
-          setStep(4);
-        }
+        urlTxn = new URLSearchParams(window.location.search).get('txn');
+        ssTxn = sessionStorage.getItem('mail_onboarding_txn');
       } catch { /* sessionStorage unavailable */ }
-    }
-  }, [step, merchantTransId]);
+
+      if (urlTxn) {
+        if (!cancelled) { setMerchantTransId(urlTxn); setStep(4); setResumeChecked(true); }
+        return;
+      }
+      if (!ssTxn) { if (!cancelled) setResumeChecked(true); return; }
+
+      // Stale candidate — confirm a real provisioning job exists before resuming.
+      try {
+        const { data } = await client.get(`/onboarding/${ssTxn}/status`);
+        if (cancelled) return;
+        if (data?.job) { setMerchantTransId(ssTxn); setStep(4); }
+        else { try { sessionStorage.removeItem('mail_onboarding_txn'); } catch { /* noop */ } }
+      } catch {
+        try { sessionStorage.removeItem('mail_onboarding_txn'); } catch { /* noop */ }
+      } finally {
+        if (!cancelled) setResumeChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [step, merchantTransId, resumeChecked]);
 
   const currentPlan = plans.find(p => p.id === selectedPlan);
   const baseAmount = currentPlan ? (period === 'annual' ? currentPlan.annual : currentPlan.monthly) : 0;
@@ -340,9 +392,19 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
       {step === 4 && (
         <MailProvisioningView
           status={status}
+          phase={provisioningPhase}
           domain={domain || status?.domain || ''}
           branding={branding}
           onComplete={onComplete}
+          onStartOver={() => {
+            try { sessionStorage.removeItem('mail_onboarding_txn'); } catch { /* noop */ }
+            try { window.history.replaceState({}, '', '/onboarding'); } catch { /* noop */ }
+            setMerchantTransId(null);
+            setStatus(null);
+            setProvisioningPhase('waiting');
+            setResumeChecked(true);
+            setStep(1);
+          }}
         />
       )}
     </div>
@@ -350,12 +412,14 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
 }
 
 function MailProvisioningView({
-  status, domain, branding, onComplete,
+  status, phase = 'waiting', domain, branding, onComplete, onStartOver,
 }: {
   status: OnboardingStatus | null;
+  phase?: 'waiting' | 'no_payment';
   domain: string;
   branding: ReturnType<typeof useTheme>['branding'];
   onComplete?: () => void;
+  onStartOver?: () => void;
 }) {
   const cardStyle = {
     background: branding.surface_card, borderRadius: 16, padding: 24,
@@ -363,6 +427,27 @@ function MailProvisioningView({
   };
 
   if (!status) {
+    // W129: no provisioning job behind this txn. Once the grace window elapses
+    // there's no completed payment — say so honestly instead of a fake spinner.
+    if (phase === 'no_payment') {
+      return (
+        <div style={cardStyle}>
+          <h3 style={{ color: branding.text_primary, fontSize: 18, fontWeight: 700, marginTop: 0, marginBottom: 8 }}>Payment not confirmed</h3>
+          <p style={{ color: branding.text_secondary, fontSize: 14, lineHeight: 1.6, marginBottom: 8 }}>
+            We couldn&rsquo;t find a completed payment for this order, so there&rsquo;s nothing to set up yet.
+          </p>
+          <p style={{ color: branding.text_muted, fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+            If you just paid, give it a moment and refresh this page. Otherwise you can start a new order.
+          </p>
+          <button
+            onClick={onStartOver}
+            style={{ padding: '11px 18px', background: branding.primary_color, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Start a new order
+          </button>
+        </div>
+      );
+    }
     return (
       <div style={cardStyle}>
         <h3 style={{ color: branding.text_primary, fontSize: 18, fontWeight: 700, marginTop: 0, marginBottom: 4 }}>Setting Up Your Mail</h3>

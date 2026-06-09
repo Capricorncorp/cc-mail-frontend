@@ -12,8 +12,9 @@
 //   3. POST gateway /auth/oidc-token with code + redirect_uri=/callback. The
 //      gateway exchanges server-to-server (mail-frontend secret) and sets the
 //      refresh_token HttpOnly cookie on .capricorncorp.com.
-//   4. Restore cart context (selected_plan / user_count / mail_onboarding_txn)
-//      and navigate to /onboarding.
+//   4. Restore cart context (selected_plan / user_count) and navigate to a
+//      clean /onboarding. (W129: a stale mail_onboarding_txn is NOT resurfaced
+//      here — that made a plain sign-in replay a dead, unpaid order.)
 //
 // IMPORTANT: redirect_uri sent to the gateway MUST match what SignupRedirect
 // sent to /auth — both must be `/callback`.
@@ -79,11 +80,9 @@ export default function Callback() {
     // Read cart context BEFORE the exchange so we can restore it either way.
     let selectedPlan: string | null = null
     let userCount: string | null = null
-    let onboardingTxn: string | null = null
     try {
       selectedPlan = sessionStorage.getItem('selected_plan')
       userCount = sessionStorage.getItem('user_count')
-      onboardingTxn = sessionStorage.getItem('mail_onboarding_txn')
     } catch { /* sessionStorage unavailable */ }
 
     ;(async () => {
@@ -121,13 +120,15 @@ export default function Callback() {
           if (userCount) sessionStorage.setItem('user_count', userCount)
         } catch { /* sessionStorage unavailable */ }
 
-        const search = new URLSearchParams()
-        if (onboardingTxn) search.set('txn', onboardingTxn)
-        const dest = search.toString() ? `/onboarding?${search.toString()}` : '/onboarding'
-
+        // W129: do NOT resurface a stale `mail_onboarding_txn` here. In the
+        // normal flow the order/txn is created AFTER login (at checkout), so any
+        // txn lingering at sign-in is a leftover from a prior abandoned attempt;
+        // propagating it made a plain "Sign in" resume a dead, unpaid order and
+        // spin "Connecting to provisioning…" forever. A real payment return comes
+        // back via the gateway redirect (/onboarding?txn=...), not through here.
         // Clear ?code/?state from the URL bar before the route change.
         window.history.replaceState({}, '', '/callback')
-        navigate(dest, { replace: true })
+        navigate('/onboarding', { replace: true })
       } catch (err: any) {
         const msg = err?.message || 'Unexpected sign-in error.'
         setError(msg)
