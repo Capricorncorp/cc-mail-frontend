@@ -69,7 +69,7 @@ const NO_JOB_GRACE_POLLS = 6;
 // settlement VPA is confirmed against the broker; the UPI line renders only when set.
 const PAYMENT_MERCHANT_BRAND = 'Capricorncorp';
 const PAYMENT_MERCHANT_LEGAL_NAME = 'MOONSHOT AI PRIVATE LIMITED';
-const PAYMENT_MERCHANT_UPI = '';
+const PAYMENT_MERCHANT_UPI = 'moonshot4086@fbl'; // operator-confirmed settlement VPA (2026-06-10)
 
 function featureList(f: Record<string, any>): string[] {
   if (Array.isArray(f)) return f;
