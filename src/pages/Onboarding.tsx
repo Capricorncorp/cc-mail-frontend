@@ -60,6 +60,16 @@ const POLL_INTERVAL_MS = 3000;
 // step 4 before concluding the order was never paid. Covers the brief
 // webhook→job-creation gap on a fresh payment (~18s) without spinning forever.
 const NO_JOB_GRACE_POLLS = 6;
+// W131: payment-recipient identity shown on the checkout step for customer
+// confidence — mirrors SMS Ocean's CompanyInfoBadge (CapCore). PRESENTATION ONLY:
+// the broker's dynamic QR + reconciliation + auto-provisioning are unchanged. The
+// broker exposes no merchant field via API (verified — even CapCore's richer
+// BrokerPublicIntent has none), so the legal name is a config constant exactly
+// like SMS Ocean's COMPANY_NAME. PAYMENT_MERCHANT_UPI stays empty until the
+// settlement VPA is confirmed against the broker; the UPI line renders only when set.
+const PAYMENT_MERCHANT_BRAND = 'Capricorncorp';
+const PAYMENT_MERCHANT_LEGAL_NAME = 'MOONSHOT AI PRIVATE LIMITED';
+const PAYMENT_MERCHANT_UPI = '';
 
 function featureList(f: Record<string, any>): string[] {
   if (Array.isArray(f)) return f;
@@ -377,6 +387,16 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0' }}>
             <span style={{ color: branding.text_primary, fontSize: 16, fontWeight: 700 }}>Total</span>
             <span style={{ color: branding.primary_color, fontSize: 20, fontWeight: 800 }}>{'₹'}{(total / 100).toFixed(2)}</span>
+          </div>
+          {/* W131: payment-recipient trust block — presentation only; dynamic QR + reconciliation unchanged */}
+          <div style={{ marginTop: 6, padding: '12px 14px', background: 'rgba(52,211,153,0.06)', border: `1px solid ${branding.border_color}`, borderRadius: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <ShieldCheck size={15} style={{ color: '#34d399' }} />
+              <span style={{ color: branding.text_primary, fontSize: 13, fontWeight: 700 }}>Secure payment</span>
+            </div>
+            <p style={{ color: branding.text_secondary, fontSize: 12.5, lineHeight: 1.55, margin: 0 }}>
+              You&rsquo;re paying <strong style={{ color: branding.text_primary }}>{PAYMENT_MERCHANT_LEGAL_NAME}</strong>{PAYMENT_MERCHANT_BRAND ? ` (${PAYMENT_MERCHANT_BRAND})` : ''} via UPI through the Capricorncorp Payments Broker.{PAYMENT_MERCHANT_UPI ? <> UPI ID <strong style={{ color: branding.text_primary }}>{PAYMENT_MERCHANT_UPI}</strong>.</> : null} You&rsquo;ll see and confirm the recipient in your UPI app before approving.
+            </p>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16, gap: 12, flexWrap: 'wrap' }}>
             <button onClick={() => setStep(2)} style={{ padding: '12px 24px', background: '#1e293b', color: branding.text_secondary, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
