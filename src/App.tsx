@@ -4,18 +4,21 @@ import PricingPage from './pages/PricingPage'
 import SignupRedirect from './pages/SignupRedirect'
 import Callback from './pages/Callback'
 import Onboarding from './pages/Onboarding'
+import { SurfaceAuthProvider } from './auth/SurfaceAuth'
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/signup" element={<SignupRedirect />} />
-        <Route path="/callback" element={<Callback />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <SurfaceAuthProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/signup" element={<SignupRedirect />} />
+          <Route path="/callback" element={<Callback />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </SurfaceAuthProvider>
     </BrowserRouter>
   )
 }
