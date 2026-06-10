@@ -571,7 +571,7 @@ function MailProvisioningView({
               MX propagation is usually within 4 hours. We check every few minutes and will update the status automatically.
             </p>
           </div>
-          <button onClick={onComplete} style={{ padding: '12px 32px', background: branding.primary_color, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+          <button onClick={() => { if (onComplete) { onComplete(); return; } window.location.href = 'https://console.capricorncorp.com/?welcome=1#mail'; }} style={{ padding: '12px 32px', background: branding.primary_color, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
             Go to Mail Dashboard
           </button>
         </div>
@@ -635,6 +635,13 @@ function MailQuickStart({
   const goAddMailbox = () => goTab('?tab=accounts&new=1');
   const goSettings = () => goTab('?tab=accounts');         // settings card visible on accounts tab
   const goHealth = () => goTab('?tab=health');
+  // Primary CTA. onComplete is undefined on the business-email.capricorncorp.com
+  // surface — previously that made "Go to Mail Dashboard" a NO-OP (dead button).
+  // Fall back to an absolute redirect to the customer's mail dashboard in Console.
+  const goMailDashboard = () => {
+    if (onComplete) { onComplete(); return; }
+    goTab('?welcome=1');
+  };
 
   const QuickStartCard = ({
     icon: Icon, title, description, ctaLabel, onClick, accentColor,
@@ -725,7 +732,7 @@ function MailQuickStart({
         >
           <BookOpen size={12} /> Email setup guide
         </a>
-        <button onClick={onComplete} style={{
+        <button onClick={goMailDashboard} style={{
           padding: '12px 24px', background: branding.primary_color, color: '#fff',
           border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', gap: 6,
