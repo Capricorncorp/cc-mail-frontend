@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Mail, Check, ArrowRight, ArrowLeft,
-  ExternalLink, Smartphone, ShieldCheck, BookOpen } from 'lucide-react';
+  Smartphone, ShieldCheck, BookOpen, KeyRound } from 'lucide-react';
 import client from '@capricorncorp/frontend-platform/api/client';
 import { useTheme } from '@capricorncorp/frontend-platform/theme/ThemeProvider';
 import { StatusChip, stepStateToChipState } from '@capricorncorp/frontend-platform/components/StatusChip';
@@ -631,7 +631,6 @@ function MailQuickStart({
     window.location.href = consoleUrl.toString();
     if (onComplete) onComplete();
   };
-  const goWebmail = () => goTab('?webmail=1');
   const goAddMailbox = () => goTab('?tab=accounts&new=1');
   const goSettings = () => goTab('?tab=accounts');         // settings card visible on accounts tab
   const goHealth = () => goTab('?tab=health');
@@ -681,7 +680,7 @@ function MailQuickStart({
           </div>
         </div>
         <div style={{ color: branding.text_muted, fontSize: 13 }}>
-          Your first mailbox at <strong style={{ color: branding.text_primary }}>{domain}</strong> is ready. Here's what to do next.
+          Your email domain <strong style={{ color: branding.text_primary }}>{domain}</strong> is ready. Set a password for your first mailbox, then sign in.
         </div>
       </div>
 
@@ -691,11 +690,11 @@ function MailQuickStart({
         gap: 12, marginBottom: 16,
       }}>
         <QuickStartCard
-          icon={ExternalLink}
-          title="Open Webmail"
-          description="Sign in with your full email address and the password you set during checkout."
-          ctaLabel="Launch Webmail"
-          onClick={goWebmail}
+          icon={KeyRound}
+          title="Set your mailbox password"
+          description="Your first mailbox is ready — set a password for it in your dashboard, then you can sign in to Webmail."
+          ctaLabel="Set password"
+          onClick={goSettings}
           accentColor={branding.primary_color}
         />
         <QuickStartCard
