@@ -1,3 +1,4 @@
+import { CONSOLE_ORIGIN, MOONSHOT_PROFILE } from '../surfaceConfig'
 // Mail Onboarding Wizard
 //
 // REWRITTEN 2026-05-28: real backend state polling, no setTimeout fakes.
@@ -251,12 +252,18 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void } =
         // Verdaccio publish auth. PhonePe owns *.phonepe.com, so trust it here for
         // the payment hop ONLY; all other hosts still route through safeRedirect.
         let payHost = '';
-        try { payHost = new URL(data.paymentUrl).host.toLowerCase(); } catch { /* fall through */ }
+        let moonshotCheckout = false;
+        try {
+          const paymentUrl = new URL(data.paymentUrl);
+          payHost = paymentUrl.host.toLowerCase();
+          moonshotCheckout = MOONSHOT_PROFILE && paymentUrl.origin === 'https://payments.moonshot-ai.in'
+            && !paymentUrl.username && !paymentUrl.password;
+        } catch { /* fall through */ }
         // W130: the Capricorncorp Payments Broker returns its hosted payment page
         // on a FIRST-PARTY host (app.capricorncorp.com). Trust *.capricorncorp.com
         // for the payment hop too (same basis as PhonePe); every other host still
         // routes through safeRedirect. (Fixes "host-not-allowlisted:app.capricorncorp.com".)
-        if (payHost === 'phonepe.com' || payHost.endsWith('.phonepe.com')
+        if (moonshotCheckout || payHost === 'phonepe.com' || payHost.endsWith('.phonepe.com')
             || payHost === 'capricorncorp.com' || payHost.endsWith('.capricorncorp.com')) {
           window.location.href = data.paymentUrl;
           return;
@@ -571,7 +578,7 @@ function MailProvisioningView({
               MX propagation is usually within 4 hours. We check every few minutes and will update the status automatically.
             </p>
           </div>
-          <button onClick={() => { if (onComplete) { onComplete(); return; } window.location.href = 'https://console.capricorncorp.com/?welcome=1#mail'; }} style={{ padding: '12px 32px', background: branding.primary_color, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+          <button onClick={() => { if (onComplete) { onComplete(); return; } window.location.href = `${CONSOLE_ORIGIN}/?welcome=1#mail`; }} style={{ padding: '12px 32px', background: branding.primary_color, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
             Go to Mail Dashboard
           </button>
         </div>
@@ -625,7 +632,7 @@ function MailQuickStart({
   // Wave 90 §22.39: renamed from mail.capricorncorp.com to avoid colliding
   // with the production CWP mail server at mail.capricorncorp.com (.201).
   const goTab = (search: string) => {
-    const consoleUrl = new URL('https://console.capricorncorp.com/');
+    const consoleUrl = new URL('/', CONSOLE_ORIGIN);
     consoleUrl.search = search;
     consoleUrl.hash = '#mail';
     window.location.href = consoleUrl.toString();
@@ -725,11 +732,11 @@ function MailQuickStart({
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
         <a
-          href="https://capricorncorp.com/docs/email-setup"
+          href={MOONSHOT_PROFILE ? 'https://moonshot-ai.in/contact' : 'https://capricorncorp.com/docs/email-setup'}
           target="_blank" rel="noreferrer"
           style={{ color: branding.text_muted, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <BookOpen size={12} /> Email setup guide
+          <BookOpen size={12} /> {MOONSHOT_PROFILE ? 'Contact support' : 'Email setup guide'}
         </a>
         <button onClick={goMailDashboard} style={{
           padding: '12px 24px', background: branding.primary_color, color: '#fff',
