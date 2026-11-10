@@ -23,7 +23,7 @@ import { MOONSHOT_PROFILE, STOREFRONT_ORIGIN, surfaceBrand } from '../surfaceCon
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@capricorncorp/frontend-platform/theme/ThemeProvider'
-import { setAccessToken } from '@capricorncorp/frontend-platform/api/auth'
+import { getAccessToken, setAccessToken } from '@capricorncorp/frontend-platform/api/auth'
 
 const GATEWAY_URL =
   (import.meta as any).env?.VITE_GATEWAY_URL || 'https://gateway.capricorncorp.com'
@@ -63,11 +63,21 @@ export default function Callback() {
     try { silentState = sessionStorage.getItem('cc_silent_state') } catch { /* ignore */ }
     if (silentState && returnedState && returnedState === silentState) {
       let ret = '/'
+      let redirectToCanonicalEntry = false
       try {
         sessionStorage.removeItem('cc_silent_state')
         sessionStorage.setItem('cc_silent_tried', '1')
-        ret = sessionStorage.getItem('cc_silent_return') || '/'
+        const savedReturn = sessionStorage.getItem('cc_silent_return')
+        ret = savedReturn || '/'
         sessionStorage.removeItem('cc_silent_return')
+        // Only the old issuer can establish that the legacy browser has no shared session.
+        redirectToCanonicalEntry = !MOONSHOT_PROFILE && window.location.origin === STOREFRONT_ORIGIN
+          && (savedReturn === '/' || savedReturn === '/pricing') && !window.location.hash
+          && oidcError === 'login_required' && params.getAll('error').length === 1
+          && params.getAll('state').length === 1 && !params.has('code')
+          && ['selected_plan', 'user_count', 'mail_onboarding_txn', 'oauth_state', 'mail_oidc_error',
+            'logged_out', '_at', '_at_exp'].every(key => sessionStorage.getItem(key) === null)
+          && localStorage.getItem('user_profile') === null && !getAccessToken()
       } catch { /* ignore */ }
       if (code) {
         // A shared OIDC session exists — exchange server-side for the profile + tokens,
@@ -90,8 +100,7 @@ export default function Callback() {
           window.location.replace(ret)
         })()
       } else {
-        // prompt=none returned login_required / no session — just go back, logged out.
-        window.location.replace(ret)
+        window.location.replace(redirectToCanonicalEntry ? `https://business-email.moonshot-ai.in${ret}` : ret)
       }
       return
     }
