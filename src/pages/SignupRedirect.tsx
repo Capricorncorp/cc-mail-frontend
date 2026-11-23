@@ -1,10 +1,16 @@
 import { MOONSHOT_PROFILE, OIDC_ORIGIN, STOREFRONT_ORIGIN } from '../surfaceConfig'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { beginLegacySignupSessionDetection } from '../auth/SurfaceAuth'
 
 const SIGN_IN_ORIGIN = MOONSHOT_PROFILE ? OIDC_ORIGIN : 'https://auth.capricorncorp.com'
 
 export default function SignupRedirect() {
+  const redirected = useRef(false)
   useEffect(() => {
+    if (redirected.current) return
+    redirected.current = true
+    if (beginLegacySignupSessionDetection()) return
+
     const clientId = 'mail-frontend'
     // MUST be /callback — the only redirect_uri registered for the mail-frontend
     // OIDC client. /onboarding (the old value) returns invalid_redirect_uri and
