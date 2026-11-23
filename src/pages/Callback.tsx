@@ -72,7 +72,7 @@ export default function Callback() {
         sessionStorage.removeItem('cc_silent_return')
         // Only the old issuer can establish that the legacy browser has no shared session.
         redirectToCanonicalEntry = !MOONSHOT_PROFILE && window.location.origin === STOREFRONT_ORIGIN
-          && (savedReturn === '/' || savedReturn === '/pricing') && !window.location.hash
+          && (savedReturn === '/' || savedReturn === '/pricing' || savedReturn === '/signup') && !window.location.hash
           && oidcError === 'login_required' && params.getAll('error').length === 1
           && params.getAll('state').length === 1 && !params.has('code')
           && ['selected_plan', 'user_count', 'mail_onboarding_txn', 'oauth_state', 'mail_oidc_error',
