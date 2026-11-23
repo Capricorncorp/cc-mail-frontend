@@ -732,11 +732,11 @@ function MailQuickStart({
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
         <a
-          href={MOONSHOT_PROFILE ? 'https://moonshot-ai.in/contact' : 'https://capricorncorp.com/docs/email-setup'}
+          href="https://moonshot-ai.in/contact-us"
           target="_blank" rel="noreferrer"
           style={{ color: branding.text_muted, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <BookOpen size={12} /> {MOONSHOT_PROFILE ? 'Contact support' : 'Email setup guide'}
+          <BookOpen size={12} /> Contact support
         </a>
         <button onClick={goMailDashboard} style={{
           padding: '12px 24px', background: branding.primary_color, color: '#fff',
